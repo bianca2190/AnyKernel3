@@ -488,6 +488,9 @@ do_devicecheck;
 do_versioncheck;
 do_levelcheck;
 
+# used by kyriepatch
+export ZIPFILE
+
 ui_print "Installing...";
 # hack to maintain support for anykernel.sh files that weren't updated correctly along with the AK core
 CORE=$(grep -oE 'ak.*core.sh' anykernel.sh);
