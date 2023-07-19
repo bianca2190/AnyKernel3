@@ -4,7 +4,7 @@
 ### AnyKernel setup
 # begin properties
 properties() { '
-kernel.string=DeathRhythm by elizabethangelalorenza
+kernel.string=RedDragon-KSU by MKV @mkvaja
 do.devicecheck=1
 do.modules=0
 do.systemless=1
@@ -25,7 +25,7 @@ set_perm_recursive 0 0 750 750 $ramdisk/init* $ramdisk/sbin;
 
 
 ## boot shell variables
-block=auto;
+block=/dev/block/bootdevice/by-name/boot;
 is_slot_device=0;
 ramdisk_compression=auto;
 patch_vbmeta_flag=auto;
@@ -36,24 +36,49 @@ patch_vbmeta_flag=auto;
 # boot install
 dump_boot; # use split_boot to skip ramdisk unpack, e.g. for devices with init_boot ramdisk
 
-# init.rc
-backup_file init.rc;
-replace_string init.rc "cpuctl cpu,timer_slack" "mount cgroup none /dev/cpuctl cpu" "mount cgroup none /dev/cpuctl cpu,timer_slack";
+## Get Android version (DO NOT CHANGE)
+# begin checker android version
+android_ver="$(file_getprop /system/build.prop ro.build.version.release)"
 
-# init.tuna.rc
-backup_file init.tuna.rc;
-insert_line init.tuna.rc "nodiratime barrier=0" after "mount_all /fstab.tuna" "\tmount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/userdata /data remount nosuid nodev noatime nodiratime barrier=0";
-append_file init.tuna.rc "bootscript" init.tuna;
+if [ ! -z "$android_ver" ]; then
+	patch_cmdline "androidboot.version" "androidboot.version=$android_ver"
+fi
+#end checker android version
 
-# fstab.tuna
-backup_file fstab.tuna;
-patch_fstab fstab.tuna /system ext4 options "noatime,barrier=1" "noatime,nodiratime,barrier=0";
-patch_fstab fstab.tuna /cache ext4 options "barrier=1" "barrier=0,nomblk_io_submit";
-patch_fstab fstab.tuna /data ext4 options "data=ordered" "nomblk_io_submit,data=writeback";
-append_file fstab.tuna "usbdisk" fstab;
+## Custom MIUI patch (DO NOT CHANGE)
+# begin checker custom miui patch
+cmdl_add() {
+    local fh=$split_img/header
+    local fhmod=$split_img/header.mod
 
-# Patch cmdline for MIUI
-. $bin/kyriepatch.sh;
+    if ! grep "$1" ; then
+        cat $fh | sed -E "s/cmdline=(.*)/cmdline=\1 $1/" > $fhmod
+        mv $fhmod $fh
+    fi
+}
+
+cmdl_rm() {
+	local fh=$split_img/header
+    local fhmod=$split_img/header.mod
+
+    if grep "$1" $fh; then
+        cat $fh | sed -E "s/ $1//" $fh > $fhmod
+        mv $fhmod $fh
+    fi
+}
+
+patch_mi() {
+    # cleanup it first
+    cmdl_rm msm_dsi.phyd_miui=1
+
+    local vi=$(file_getprop /system/build.prop ro.system.build.version.incremental)
+    if contains "$ZIPFILE" "miui.zip" || contains "$vi" "V13." || contains "$vi" "V14." ; then
+        ui_print "MIUI is detected: $vi";
+        ui_print "Enabling msm_dsi.phyd_miui for MIUI compatibility...";
+        cmdl_add msm_dsi.phyd_miui=1
+    fi
+}
+#end checker custom miui patch
 
 write_boot; # use flash_boot to skip ramdisk repack, e.g. for devices with init_boot ramdisk
 ## end boot install
