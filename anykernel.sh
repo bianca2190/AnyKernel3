@@ -4,7 +4,7 @@
 ### AnyKernel setup
 # begin properties
 properties() { '
-kernel.string=RedDragon-KSU by MKV @mkvaja
+kernel.string=RedDragon-KSU by M03L.id @mkvaja
 do.devicecheck=1
 do.modules=0
 do.systemless=1
